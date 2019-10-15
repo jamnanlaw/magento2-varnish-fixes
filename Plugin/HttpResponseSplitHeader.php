@@ -57,29 +57,19 @@ class HttpResponseSplitHeader
         $this->addHeaderToStaticMap();
 
         if ($name == 'X-Magento-Tags') {
-            $headerLength = 0;
-            $value = (string)$value;
-            $tags = explode(',', $value);
 
-            $newTags = [];
-            foreach ($tags as $tag) {
-                if ($headerLength + strlen($tag) > $this->requestSize - count($tags) - 1) {
-                    $tagString = implode(',', $newTags);
-                    $subject->getHeaders()->addHeaderLine($name, $tagString);
-                    $newTags = [];
-                    $headerLength = 0;
-                }
-                $headerLength += strlen($tag);
-                $newTags[] = $tag;
-            }
-            $tagString = implode(',', $newTags);
-            $subject->getHeaders()->addHeaderLine($name, $tagString);
+            $tags = (string)$value;
 
-            // Add remaining tags to header or when they do not reach the limit at all
-            if (count($newTags) > 0) {
-                $tagString = implode(',', $newTags);
-                $subject->getHeaders()->addHeaderLine($name, $tagString);
+            $headLength = strlen($tags);
+
+            while  ($headLength > $this->requestSize) {
+                $cut = strrpos($tags, ',', $this->requestSize - $headLength);
+                $subject->getHeaders()->addHeaderLine($name, substr($tags, 0, $cut ));
+                $tags = substr($tags, $cut + 1);
+                $headLength = strlen($tags);
             }
+
+            $subject->getHeaders()->addHeaderLine($name, $tags);
 
             return $subject;
         }
